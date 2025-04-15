@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 游戏</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #faf8ef;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .header {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .score-container {
+            background: #bbada0;
+            padding: 15px 25px;
+            border-radius: 6px;
+            color: white;
+            text-align: center;
+        }
+        .score-title {
+            font-size: 16px;
+        }
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .grid {
+            width: 400px;
+            height: 400px;
+            background: #bbada0;
+            border-radius: 6px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 15px;
+        }
+        .cell {
+            background: rgba(238, 228, 218, 0.35);
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            font-weight: bold;
+            color: #776e65;
+        }
+        .tile {
+            width: 100%;
+            height: 100%;
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: 100ms ease-in-out;
+            background-color: #eee4da;
+        }
+        .tile-2 { background-color: #eee4da; }
+        .tile-4 { background-color: #ede0c8; }
+        .tile-8 { background-color: #f2b179; color: white; }
+        .tile-16 { background-color: #f59563; color: white; }
+        .tile-32 { background-color: #f67c5f; color: white; }
+        .tile-64 { background-color: #f65e3b; color: white; }
+        .tile-128 { background-color: #edcf72; color: white; font-size: 30px; }
+        .tile-256 { background-color: #edcc61; color: white; font-size: 30px; }
+        .tile-512 { background-color: #edc850; color: white; font-size: 30px; }
+        .tile-1024 { background-color: #edc53f; color: white; font-size: 25px; }
+        .tile-2048 { background-color: #edc22e; color: white; font-size: 25px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="score-container">
+            <div class="score-title">分数</div>
+            <div id="score" class="score">0</div>
+        </div>
+        <div class="score-container">
+            <div class="score-title">最高分</div>
+            <div id="best-score" class="score">0</div>
+        </div>
+    </div>
+    <div class="grid" id="grid"></div>
+
+    <script>
+        class Game2048 {
+            constructor() {
+                this.grid = Array(4).fill().map(() => Array(4).fill(0));
+                this.score = 0;
+                this.bestScore = parseInt(localStorage.getItem('bestScore')) || 0;
+                this.init();
+            }
+
+            init() {
+                this.createGrid();
+                this.addNewTile();
+                this.addNewTile();
+                this.updateDisplay();
+                this.setupInputs();
+            }
+
+            createGrid() {
+                const gridElement = document.getElementById('grid');
+                for (let i = 0; i < 16; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    gridElement.appendChild(cell);
+                }
+            }
+
+            addNewTile() {
+                const emptyCells = [];
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        if (this.grid[i][j] === 0) {
+                            emptyCells.push({x: i, y: j});
+                        }
+                    }
+                }
+                if (emptyCells.length > 0) {
+                    const {x, y} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                    this.grid[x][y] = Math.random() < 0.9 ? 2 : 4;
+                }
+            }
+
+            updateDisplay() {
+                const cells = document.getElementsByClassName('cell');
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        const value = this.grid[i][j];
+                        const cell = cells[i * 4 + j];
+                        cell.innerHTML = value ? `<div class="tile tile-${value}">${value}</div>` : '';
+                    }
+                }
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('best-score').textContent = this.bestScore;
+            }
+
+            move(direction) {
+                let moved = false;
+                const newGrid = Array(4).fill().map(() => Array(4).fill(0));
+
+                if (direction === 'ArrowLeft' || direction === 'ArrowRight') {
+                    for (let i = 0; i < 4; i++) {
+                        const row = this.grid[i].filter(x => x !== 0);
+                        if (direction === 'ArrowLeft') {
+                            for (let j = 0; j < row.length - 1; j++) {
+                                if (row[j] === row[j + 1]) {
+                                    row[j] *= 2;
+                                    this.score += row[j];
+                                    row.splice(j + 1, 1);
+                                    moved = true;
+                                }
+                            }
+                            for (let j = 0; j < 4; j++) {
+                                newGrid[i][j] = row[j] || 0;
+                            }
+                        } else {
+                            for (let j = row.length - 1; j > 0; j--) {
+                                if (row[j] === row[j - 1]) {
+                                    row[j] *= 2;
+                                    this.score += row[j];
+                                    row.splice(j - 1, 1);
+                                    row.unshift(0);
+                                    moved = true;
+                                }
+                            }
+                            for (let j = 0; j < 4; j++) {
+                                newGrid[i][3 - j] = row[row.length - 1 - j] || 0;
+                            }
+                        }
+                    }
+                } else {
+                    for (let j = 0; j < 4; j++) {
+                        const column = this.grid.map(row => row[j]).filter(x => x !== 0);
+                        if (direction === 'ArrowUp') {
+                            for (let i = 0; i < column.length - 1; i++) {
+                                if (column[i] === column[i + 1]) {
+                                    column[i] *= 2;
+                                    this.score += column[i];
+                                    column.splice(i + 1, 1);
+                                    moved = true;
+                                }
+                            }
+                            for (let i = 0; i < 4; i++) {
+                                newGrid[i][j] = column[i] || 0;
+                            }
+                        } else {
+                            for (let i = column.length - 1; i > 0; i--) {
+                                if (column[i] === column[i - 1]) {
+                                    column[i] *= 2;
+                                    this.score += column[i];
+                                    column.splice(i - 1, 1);
+                                    column.unshift(0);
+                                    moved = true;
+                                }
+                            }
+                            for (let i = 0; i < 4; i++) {
+                                newGrid[3 - i][j] = column[column.length - 1 - i] || 0;
+                            }
+                        }
+                    }
+                }
+
+                if (moved || JSON.stringify(this.grid) !== JSON.stringify(newGrid)) {
+                    this.grid = newGrid;
+                    this.addNewTile();
+                    if (this.score > this.bestScore) {
+                        this.bestScore = this.score;
+                        localStorage.setItem('bestScore', this.bestScore);
+                    }
+                    this.updateDisplay();
+                }
+            }
+
+            setupInputs() {
+                document.addEventListener('keydown', (e) => {
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                        this.move(e.key);
+                    }
+                });
+
+                let touchStartX, touchStartY;
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                });
+
+                document.addEventListener('touchend', (e) => {
+                    if (!touchStartX || !touchStartY) return;
+
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const touchEndY = e.changedTouches[0].clientY;
+
+                    const dx = touchEndX - touchStartX;
+                    const dy = touchEndY - touchStartY;
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        this.move(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+                    } else {
+                        this.move(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+                    }
+                });
+            }
+        }
+
+        new Game2048();
+    </script>
+</body>
+</html>

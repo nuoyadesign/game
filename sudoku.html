@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数独游戏</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #faf8ef;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .header {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #8f7a66;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #9f8b77;
+        }
+        .timer {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            width: 450px;
+            height: 450px;
+            background: #bbada0;
+            border-radius: 6px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-gap: 2px;
+        }
+        .cell {
+            background: white;
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .cell.fixed {
+            background: #eee4da;
+            cursor: not-allowed;
+        }
+        .cell.selected {
+            background: #f3d774;
+        }
+        .cell.error {
+            color: red;
+        }
+        .grid-line-vertical {
+            border-right: 2px solid #bbada0;
+        }
+        .grid-line-horizontal {
+            border-bottom: 2px solid #bbada0;
+        }
+        .number-pad {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 5px;
+        }
+        .number-button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #8f7a66;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .number-button:hover {
+            background-color: #9f8b77;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>数独游戏</h1>
+        <div class="timer">00:00</div>
+    </div>
+    
+    <div class="controls">
+        <button class="button" id="newGame">新游戏</button>
+        <select class="button" id="difficulty">
+            <option value="easy">简单</option>
+            <option value="medium">中等</option>
+            <option value="hard">困难</option>
+        </select>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    
+    <div class="number-pad" id="numberPad">
+        <button class="number-button">1</button>
+        <button class="number-button">2</button>
+        <button class="number-button">3</button>
+        <button class="number-button">4</button>
+        <button class="number-button">5</button>
+        <button class="number-button">6</button>
+        <button class="number-button">7</button>
+        <button class="number-button">8</button>
+        <button class="number-button">9</button>
+    </div>
+
+    <script>
+        class SudokuGame {
+            constructor() {
+                this.grid = Array(9).fill().map(() => Array(9).fill(0));
+                this.solution = Array(9).fill().map(() => Array(9).fill(0));
+                this.fixed = Array(9).fill().map(() => Array(9).fill(false));
+                this.selectedCell = null;
+                this.timer = 0;
+                this.timerInterval = null;
+                this.init();
+            }
+
+            init() {
+                this.createGrid();
+                this.setupControls();
+                this.setupNumberPad();
+                this.newGame();
+            }
+
+            createGrid() {
+                const gridElement = document.getElementById('grid');
+                gridElement.innerHTML = '';
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        if (j === 2 || j === 5) cell.classList.add('grid-line-vertical');
+                        if (i === 2 || i === 5) cell.classList.add('grid-line-horizontal');
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        cell.addEventListener('click', () => this.selectCell(i, j));
+                        gridElement.appendChild(cell);
+                    }
+                }
+            }
+
+            setupControls() {
+                document.getElementById('newGame').addEventListener('click', () => this.newGame());
+                document.getElementById('difficulty').addEventListener('change', () => this.newGame());
+            }
+
+            setupNumberPad() {
+                const numberPad = document.getElementById('numberPad');
+                numberPad.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('number-button')) {
+                        const number = parseInt(e.target.textContent);
+                        this.setNumber(number);
+                    }
+                });
+            }
+
+            newGame() {
+                this.generatePuzzle();
+                this.updateDisplay();
+                this.startTimer();
+            }
+
+            generatePuzzle() {
+                // 生成有效的数独解决方案
+                this.generateSolution();
+                
+                // 根据难度移除数字
+                const difficulty = document.getElementById('difficulty').value;
+                const cellsToRemove = {
+                    easy: 40,
+                    medium: 50,
+                    hard: 60
+                }[difficulty];
+
+                // 复制解决方案到当前网格
+                this.grid = this.solution.map(row => [...row]);
+                this.fixed = this.grid.map(row => row.map(cell => true));
+
+                // 随机移除数字
+                let removed = 0;
+                while (removed < cellsToRemove) {
+                    const row = Math.floor(Math.random() * 9);
+                    const col = Math.floor(Math.random() * 9);
+                    if (this.grid[row][col] !== 0) {
+                        this.grid[row][col] = 0;
+                        this.fixed[row][col] = false;
+                        removed++;
+                    }
+                }
+            }
+
+            generateSolution() {
+                // 使用回溯算法生成有效的数独解决方案
+                const fillGrid = (grid) => {
+                    for (let row = 0; row < 9; row++) {
+                        for (let col = 0; col < 9; col++) {
+                            if (grid[row][col] === 0) {
+                                const numbers = this.shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+                                for (let num of numbers) {
+                                    if (this.isValid(grid, row, col, num)) {
+                                        grid[row][col] = num;
+                                        if (fillGrid(grid)) return true;
+                                        grid[row][col] = 0;
+                                    }
+                                }
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                };
+
+                this.solution = Array(9).fill().map(() => Array(9).fill(0));
+                fillGrid(this.solution);
+            }
+
+            shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            isValid(grid, row, col, num) {
+                // 检查行
+                for (let x = 0; x < 9; x++) {
+                    if (grid[row][x] === num) return false;
+                }
+
+                // 检查列
+                for (let x = 0; x < 9; x++) {
+                    if (grid[x][col] === num) return false;
+                }
+
+                // 检查3x3方格
+                const startRow = Math.floor(row / 3) * 3;
+                const startCol = Math.floor(col / 3) * 3;
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (grid[i + startRow][j + startCol] === num) return false;
+                    }
+                }
+
+                return true;
+            }
+
+            selectCell(row, col) {
+                if (this.fixed[row][col]) return;
+                
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach(cell => cell.classList.remove('selected'));
+                
+                const selectedCell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                selectedCell.classList.add('selected');
+                this.selectedCell = {row, col};
+            }
+
+            setNumber(number) {
+                if (!this.selectedCell) return;
+                const {row, col} = this.selectedCell;
+                if (this.fixed[row][col]) return;
+
+                this.grid[row][col] = number;
+                this.updateDisplay();
+                this.checkWin();
+            }
+
+            updateDisplay() {
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach(cell => {
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    const value = this.grid[row][col];
+                    
+                    cell.textContent = value || '';
+                    cell.classList.toggle('fixed', this.fixed[row][col]);
+                    cell.classList.toggle('error', value !== 0 && value !== this.solution[row][col]);
+                });
+            }
+
+            startTimer() {
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.timer = 0;
+                this.updateTimer();
+                this.timerInterval = setInterval(() => {
+                    this.timer++;
+                    this.updateTimer();
+                }, 1000);
+            }
+
+            updateTimer() {
+                const minutes = Math.floor(this.timer / 60);
+                const seconds = this.timer % 60;
+                document.querySelector('.timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            checkWin() {
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        if (this.grid[i][j] !== this.solution[i][j]) return;
+                    }
+                }
+                clearInterval(this.timerInterval);
+                setTimeout(() => alert('恭喜你完成了数独！'), 100);
+            }
+        }
+
+        // 启动游戏
+        new SudokuGame();
+    </script>
+</body>
+</html>

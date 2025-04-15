@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏导航</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-box {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 3rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+        }
+
+        .section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card a {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            padding: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #2d3748;
+        }
+
+        .card-description {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>游戏导航</h1>
+            <p>发现有趣的小游戏</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="搜索游戏..." id="searchInput">
+        </div>
+
+        <section class="section">
+            <h2 class="section-title">热门游戏</h2>
+            <div class="card-grid" id="gameGrid">
+                <div class="card">
+                    <a href="2048.html">
+                        <div class="card-title">2048</div>
+                        <div class="card-description">经典数字益智游戏，通过滑动合并相同数字，目标是得到2048！</div>
+                    </a>
+                </div>
+                <div class="card">
+                    <a href="sudoku.html">
+                        <div class="card-title">数独</div>
+                        <div class="card-description">经典九宫格数字游戏，考验逻辑推理能力，填充数字完成挑战！</div>
+                    </a>
+                </div>
+                <!-- 更多游戏卡片将通过JavaScript动态添加 -->
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 搜索功能
+        const searchInput = document.getElementById('searchInput');
+        const gameGrid = document.getElementById('gameGrid');
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const cards = gameGrid.getElementsByClassName('card');
+
+            Array.from(cards).forEach(card => {
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                const description = card.querySelector('.card-description').textContent.toLowerCase();
+
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
